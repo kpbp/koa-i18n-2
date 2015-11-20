@@ -279,4 +279,47 @@ describe('koa-i18n', function() {
         .expect(200, done);
     });
   });
+
+  describe('accepts custom function as a mode', () => {
+    var app,
+    customMode = function() {
+      return this.state.defaultLocale
+    }
+
+    before(() => {
+      app = koa()
+
+      locale(app)
+
+      app.use(function* dummyMiddleware(next) {
+        this.state.defaultLocale = 'en'
+        yield next
+      })
+
+      app.use(i18n(app, {
+        directory: __dirname + '/fixtures/locales',
+        locales: ['zh-CN', 'en', 'zh-tw'],
+        modes: ['cookie', customMode]
+      }))
+
+      app.use(function*(next) {
+        this.body = this.i18n.__("locales.zh-CN")
+      })
+    })
+
+    it('should be `en` locale', () => {
+      return request(app.listen())
+        .get('/')
+        .expect(/Chinese\(Simplified\)/)
+        .expect(200)
+    })
+
+    it('should be `zh-cn` locale', () => {
+      return request(app.listen())
+        .get('/')
+        .set('Cookie', 'locale=zh-cn')
+        .expect(/简体中文/)
+        .expect(200)
+    })
+  })
 });
